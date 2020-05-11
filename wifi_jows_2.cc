@@ -187,11 +187,13 @@ wifiApNode.Create (1);
 
   //ListPositionAllocator used for uniform distiburion of nodes on the circle around central node
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
-  positionAlloc->Add (Vector (1.0, 1.0, 1.0)); //1st node/AP located in the center
+  /*positionAlloc->Add (Vector (1.0, 1.0, 1.0)); //1st node/AP located in the center
   positionAlloc->Add (Vector (1.0, 6.0, 1.0)); //2nd node/AP located in the center
+  ^^^^^^
+ ++++ jak to się przypisuje do stacji jeżeli jest ich więcej ++++ */
 
-  /*for (uint32_t i = 0; i < nSTA; i++)
-    positionAlloc->Add (Vector (radius * sin (2*M_PI * (float)i/(float)nSTA), radius * cos (2*M_PI * (float)i/(float)nSTA), 0.0));*/
+  for (uint32_t i = 0; i < nSTA+1; i++)
+    positionAlloc->Add (Vector (radius * sin (2*M_PI * (float)i/(float)nSTA), radius * cos (2*M_PI * (float)i/(float)nSTA), 0.0));
 
   MobilityHelper mobility;
   mobility.SetPositionAllocator (positionAlloc);
@@ -239,7 +241,6 @@ wifiApNode.Create (1);
 		  	  	  	  	  	  	/***** setting constant transmission mode (MCS) *****/
 							    "DataMode",    StringValue ("OfdmRate54Mbps"), //[6, 9, 12, 18, 24, 36, 48, 54] for 802.11a
 							    "ControlMode", StringValue ("OfdmRate6Mbps"),  //[6, 9, 12, 18, 24, 36, 48, 54] for 802.11a
-
 							    "RtsCtsThreshold",        UintegerValue (rtsCts ? 0 : 2500),
 							    "FragmentationThreshold", UintegerValue (2500));
 
@@ -302,7 +303,7 @@ wifiApNode.Create (1);
   ApplicationContainer sourceApplications, sinkApplications;
   DataRate dataRate = DataRate (1000000 * Mbps);
 
-  uint32_t destinationSTANumber = nSTA; //for one common traffic destination
+  uint32_t destinationSTANumber = nSTA-1; //for one common traffic destination
 
   Ipv4Address destination = StaInterface.GetAddress(destinationSTANumber);
   Ptr<Node> dest = wifiStaNodes.Get(destinationSTANumber);
