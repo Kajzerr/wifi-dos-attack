@@ -134,7 +134,7 @@ SimulationHelper::PopulateArpCache ()
 
 int main (int argc, char *argv[])
 {
-  uint32_t nSTA = 3;
+  uint32_t nSTA = 2;
   uint32_t packetSize = 1470;
   float simTime = 5;
   Time appsStart = Seconds(0);
