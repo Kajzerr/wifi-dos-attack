@@ -134,9 +134,9 @@ SimulationHelper::PopulateArpCache ()
 
 int main (int argc, char *argv[])
 {
-  uint32_t nSTA = 2;
+  uint32_t nSTA = 1;
   uint32_t packetSize = 1470;
-  float simTime = 5;
+  float simTime = 10;
   Time appsStart = Seconds(0);
   float radius = 5.0;
   float calcStart = 0;
@@ -179,7 +179,7 @@ int main (int argc, char *argv[])
   Packet::EnablePrinting ();
 /* Create stations and AP, stworzenie stacji i AP */
 NodeContainer wifiStaNodes;
-wifiStaNodes.Create (nSTA);
+wifiStaNodes.Create (nSTA+1);
 NodeContainer wifiApNode;
 wifiApNode.Create (1);
 // Attack stations/Stacje atakujace
@@ -198,7 +198,7 @@ wifiAttackNodes.Create (attackSTA);
   ^^^^^^
  ++++ jak to się przypisuje do stacji jeżeli jest ich więcej ++++ */
 
-  for (uint32_t i = 0; i < nSTA+1+attackSTA; i++)
+  for (uint32_t i = 0; i < nSTA+2+attackSTA; i++) // +2 ponieważ dodaje jednego node z wifiStaNodes 
     positionAlloc->Add (Vector (radius * sin (2*M_PI * (float)i/(float)nSTA), radius * cos (2*M_PI * (float)i/(float)nSTA), 0.0));
 
   MobilityHelper mobility;
@@ -212,7 +212,7 @@ wifiAttackNodes.Create (attackSTA);
   mobility.Install (wifiStaNodes);
   mobility.Install (wifiApNode);
   // Attack stations/Stacje atakujace
-  mobility.Install (attackSTA);
+  mobility.Install (wifiAttackNodes);
 
 /* ===== Propagation Model configuration ===== */
   //default model (i.e. LogDistancePropagationLossModel)
@@ -274,7 +274,7 @@ wifiAttackNodes.Create (attackSTA);
                "Ssid", SsidValue (ssid)); /*,
                "AltEDCASupported", BooleanValue (true)) - tego nie widzę w dokumetacji;*/
   NetDeviceContainer AttackDevices;
-  AttackDevices = wifi.Install (phy, mac, attackSTA);
+  AttackDevices = wifi.Install (phy, mac, wifiAttackNodes);
 
 
 
@@ -302,11 +302,11 @@ wifiAttackNodes.Create (attackSTA);
   stack.Install (wifiApNode);
   stack.Install (wifiStaNodes);
   // Attack stations/Stacje atakujace
-  stack.Install (attackSTA);
+  stack.Install (wifiAttackNodes);
 
   Ipv4AddressHelper address;
   address.SetBase ("192.168.1.0", "255.255.255.0");
-
+  
   Ipv4InterfaceContainer StaInterface;
   StaInterface = address.Assign (staDevices);
   Ipv4InterfaceContainer ApInterface;
@@ -315,7 +315,11 @@ wifiAttackNodes.Create (attackSTA);
   Ipv4InterfaceContainer AttackInterface;
   AttackInterface = address.Assign (AttackDevices);
 
-  
+/* pytanie1 czy poprawnie dodaje stacje atakujace moze powinienem to robic inaczej?*/  
+/* pytanie2 czy podczas takiej konfiguracji jaka napisalem nie dojdzie so sytuacji 
+ze stacje "atakujace" beda obslugiwac ruch node'ow tak samo jak stacja AP?*/
+/* pytanie3 czy poprawnie dodaje w tym miejscu adresy dla stacji atakujacych?*/
+
 
 /* ===== Traffic Control (TC) Layer ==== */
 
@@ -323,10 +327,9 @@ wifiAttackNodes.Create (attackSTA);
   //tch.Install (staDevices);
 
 /* ===== Setting applications ===== */
- // moje chyba do usuniecia ApplicationContainer sourceApplications, sinkApplications;
   DataRate dataRate = DataRate (1000000 * Mbps);
 
-  uint32_t destinationSTANumber = nSTA-1; //for one common traffic destination
+  uint32_t destinationSTANumber = nSTA; //for one common traffic destination
 
   Ipv4Address destination = StaInterface.GetAddress(destinationSTANumber);
   Ptr<Node> dest = wifiStaNodes.Get(destinationSTANumber);
