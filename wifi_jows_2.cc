@@ -138,7 +138,7 @@ int main (int argc, char *argv[])
   uint32_t packetSize = 1470;
   float simTime = 5;
   Time appsStart = Seconds(0);
-  float radius = 1.0;
+  float radius = 5.0;
   float calcStart = 0;
   bool oneDest = true;
   bool rtsCts = false;
@@ -150,7 +150,7 @@ int main (int argc, char *argv[])
   bool BK = true;
   double Mbps = 54;
   uint32_t seed = 1;
-
+  uint32_t attackSTA = 0;
 
 /* ===== Command Line parameters ===== */
 
@@ -170,6 +170,7 @@ int main (int argc, char *argv[])
   cmd.AddValue ("BK",         "run BK traffic?",                               BK);
   cmd.AddValue ("Mbps",       "traffic generated per queue [Mbps]",            Mbps);
   cmd.AddValue ("seed",       "Seed",                                          seed);
+  cmd.AddValue ("attackSTA",  "attackSTA",                                     attackSTA);
   cmd.Parse (argc, argv);
 
   Time simulationTime = Seconds (simTime);
@@ -181,6 +182,11 @@ NodeContainer wifiStaNodes;
 wifiStaNodes.Create (nSTA);
 NodeContainer wifiApNode;
 wifiApNode.Create (1);
+// Attack stations/Stacje atakujace
+NodeContainer wifiAttackNodes;
+wifiAttackNodes.Create (attackSTA);
+
+
 
 /* ======== Positioning / Mobility ======= */
   
@@ -192,7 +198,7 @@ wifiApNode.Create (1);
   ^^^^^^
  ++++ jak to się przypisuje do stacji jeżeli jest ich więcej ++++ */
 
-  for (uint32_t i = 0; i < nSTA+1; i++)
+  for (uint32_t i = 0; i < nSTA+1+attackSTA; i++)
     positionAlloc->Add (Vector (radius * sin (2*M_PI * (float)i/(float)nSTA), radius * cos (2*M_PI * (float)i/(float)nSTA), 0.0));
 
   MobilityHelper mobility;
@@ -205,7 +211,8 @@ wifiApNode.Create (1);
 
   mobility.Install (wifiStaNodes);
   mobility.Install (wifiApNode);
-
+  // Attack stations/Stacje atakujace
+  mobility.Install (attackSTA);
 
 /* ===== Propagation Model configuration ===== */
   //default model (i.e. LogDistancePropagationLossModel)
@@ -245,6 +252,8 @@ wifiApNode.Create (1);
 							    "FragmentationThreshold", UintegerValue (2500));
 
   Ssid ssid = Ssid ("test");
+
+  // Stacje klienckie 
   mac.SetType ("ns3::StaWifiMac",
                "QosSupported", BooleanValue (true),
                "Ssid", SsidValue (ssid));
@@ -252,13 +261,21 @@ wifiApNode.Create (1);
                "AltEDCASupported", BooleanValue (true));   - tego nie widzę w dokumetacji*/
   NetDeviceContainer staDevices;
   staDevices = wifi.Install (phy, mac, wifiStaNodes);
-
+  // Stacja AP
   mac.SetType ("ns3::ApWifiMac",
               "QosSupported", BooleanValue (true),
                "Ssid", SsidValue (ssid)); /*,
                "AltEDCASupported", BooleanValue (true)) - tego nie widzę w dokumetacji;*/
   NetDeviceContainer apDevice;
   apDevice = wifi.Install (phy, mac, wifiApNode);
+  // Attack stations/Stacje atakujace 
+  mac.SetType ("ns3::ApWifiMac",
+              "QosSupported", BooleanValue (true),
+               "Ssid", SsidValue (ssid)); /*,
+               "AltEDCASupported", BooleanValue (true)) - tego nie widzę w dokumetacji;*/
+  NetDeviceContainer AttackDevices;
+  AttackDevices = wifi.Install (phy, mac, attackSTA);
+
 
 
 
@@ -284,6 +301,8 @@ wifiApNode.Create (1);
   InternetStackHelper stack;
   stack.Install (wifiApNode);
   stack.Install (wifiStaNodes);
+  // Attack stations/Stacje atakujace
+  stack.Install (attackSTA);
 
   Ipv4AddressHelper address;
   address.SetBase ("192.168.1.0", "255.255.255.0");
@@ -292,6 +311,10 @@ wifiApNode.Create (1);
   StaInterface = address.Assign (staDevices);
   Ipv4InterfaceContainer ApInterface;
   ApInterface = address.Assign (apDevice);
+  // Attack stations/Stacje atakujace
+  Ipv4InterfaceContainer AttackInterface;
+  AttackInterface = address.Assign (AttackDevices);
+
   
 
 /* ===== Traffic Control (TC) Layer ==== */
@@ -300,7 +323,7 @@ wifiApNode.Create (1);
   //tch.Install (staDevices);
 
 /* ===== Setting applications ===== */
-  ApplicationContainer sourceApplications, sinkApplications;
+ // moje chyba do usuniecia ApplicationContainer sourceApplications, sinkApplications;
   DataRate dataRate = DataRate (1000000 * Mbps);
 
   uint32_t destinationSTANumber = nSTA-1; //for one common traffic destination
