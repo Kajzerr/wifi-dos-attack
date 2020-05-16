@@ -136,7 +136,7 @@ int main (int argc, char *argv[])
 {
   uint32_t nSTA = 1;
   uint32_t packetSize = 1470;
-  float simTime = 10;
+  float simTime = 2;
   Time appsStart = Seconds(0);
   float radius = 5.0;
   float calcStart = 0;
@@ -150,8 +150,8 @@ int main (int argc, char *argv[])
   bool BK = true;
   double Mbps = 54;
   uint32_t seed = 1;
-  uint32_t attackSTA = 0;
-
+  uint32_t attackSTA = 1;
+  double BeaconInt = 1;
 /* ===== Command Line parameters ===== */
 
   CommandLine cmd;
@@ -171,8 +171,10 @@ int main (int argc, char *argv[])
   cmd.AddValue ("Mbps",       "traffic generated per queue [Mbps]",            Mbps);
   cmd.AddValue ("seed",       "Seed",                                          seed);
   cmd.AddValue ("attackSTA",  "attackSTA",                                     attackSTA);
+  cmd.AddValue ("BeaconInt",  "BeaconInt",                                     BeaconInt);
   cmd.Parse (argc, argv);
-
+  
+  double BeaconInt2 = 102.4/(1000*BeaconInt);
   Time simulationTime = Seconds (simTime);
   ns3::RngSeedManager::SetSeed (seed);
  
@@ -251,28 +253,29 @@ wifiAttackNodes.Create (attackSTA);
 							    "RtsCtsThreshold",        UintegerValue (rtsCts ? 0 : 2500),
 							    "FragmentationThreshold", UintegerValue (2500));
 
-  Ssid ssid = Ssid ("test");
-
+  Ssid ssid = Ssid ("test"); 
   // Stacje klienckie 
   mac.SetType ("ns3::StaWifiMac",
                "QosSupported", BooleanValue (true),
-               "Ssid", SsidValue (ssid));
-               /*,   
-               "AltEDCASupported", BooleanValue (true));   - tego nie widzę w dokumetacji*/
+               "Ssid", SsidValue (ssid),   
+               "AltEDCASupported", BooleanValue (true));  
   NetDeviceContainer staDevices;
   staDevices = wifi.Install (phy, mac, wifiStaNodes);
   // Stacja AP
   mac.SetType ("ns3::ApWifiMac",
               "QosSupported", BooleanValue (true),
-               "Ssid", SsidValue (ssid)); /*,
-               "AltEDCASupported", BooleanValue (true)) - tego nie widzę w dokumetacji;*/
+               "Ssid", SsidValue (ssid),   
+               "AltEDCASupported", BooleanValue (true));  
   NetDeviceContainer apDevice;
   apDevice = wifi.Install (phy, mac, wifiApNode);
   // Attack stations/Stacje atakujace 
+  
+  Ssid ssid2 = Ssid ("attack");
   mac.SetType ("ns3::ApWifiMac",
-              "QosSupported", BooleanValue (true),
-               "Ssid", SsidValue (ssid)); /*,
-               "AltEDCASupported", BooleanValue (true)) - tego nie widzę w dokumetacji;*/
+               "Ssid", SsidValue (ssid),
+               "BeaconInterval", TimeValue (Seconds(BeaconInt2)),
+               "EnableBeaconJitter",BooleanValue (true) );  
+               
   NetDeviceContainer AttackDevices;
   AttackDevices = wifi.Install (phy, mac, wifiAttackNodes);
 
@@ -314,11 +317,6 @@ wifiAttackNodes.Create (attackSTA);
   // Attack stations/Stacje atakujace
   Ipv4InterfaceContainer AttackInterface;
   AttackInterface = address.Assign (AttackDevices);
-
-/* pytanie1 czy poprawnie dodaje stacje atakujace moze powinienem to robic inaczej?*/  
-/* pytanie2 czy podczas takiej konfiguracji jaka napisalem nie dojdzie so sytuacji 
-ze stacje "atakujace" beda obslugiwac ruch node'ow tak samo jak stacja AP?*/
-/* pytanie3 czy poprawnie dodaje w tym miejscu adresy dla stacji atakujacych?*/
 
 
 /* ===== Traffic Control (TC) Layer ==== */
