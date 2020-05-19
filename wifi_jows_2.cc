@@ -16,6 +16,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  *
  * Author: Lukasz Prasnal <prasnal@kt.agh.edu.pl>
+   edited by Paweł Bańbuła
  */
 
 #include "ns3/core-module.h"
@@ -139,7 +140,7 @@ int main (int argc, char *argv[])
   float simTime = 2;
   Time appsStart = Seconds(0);
   float radius = 5.0;
-  float calcStart = 0;
+  float calcStart = 1;
   bool oneDest = true;
   bool rtsCts = false;
   bool A_VO = true;
@@ -151,7 +152,8 @@ int main (int argc, char *argv[])
   double Mbps = 54;
   uint32_t seed = 1;
   uint32_t attackSTA = 1;
-  double BeaconInt = 1;
+  double BeaconInt = 4;
+  uint32_t i;
 /* ===== Command Line parameters ===== */
 
   CommandLine cmd;
@@ -174,7 +176,11 @@ int main (int argc, char *argv[])
   cmd.AddValue ("BeaconInt",  "BeaconInt",                                     BeaconInt);
   cmd.Parse (argc, argv);
   
+
+  // proba ustalenia beacon interval
   double BeaconInt2 = 102.4/(1000*BeaconInt);
+  // -------------
+
   Time simulationTime = Seconds (simTime);
   ns3::RngSeedManager::SetSeed (seed);
  
@@ -194,14 +200,22 @@ wifiAttackNodes.Create (attackSTA);
   
 
   //ListPositionAllocator used for uniform distiburion of nodes on the circle around central node
-  Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
-  /*positionAlloc->Add (Vector (1.0, 1.0, 1.0)); //1st node/AP located in the center
-  positionAlloc->Add (Vector (1.0, 6.0, 1.0)); //2nd node/AP located in the center
-  ^^^^^^
- ++++ jak to się przypisuje do stacji jeżeli jest ich więcej ++++ */
 
-  for (uint32_t i = 0; i < nSTA+2+attackSTA; i++) // +2 ponieważ dodaje jednego node z wifiStaNodes 
-    positionAlloc->Add (Vector (radius * sin (2*M_PI * (float)i/(float)nSTA), radius * cos (2*M_PI * (float)i/(float)nSTA), 0.0));
+
+
+
+
+  Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
+
+  //for (uint32_t i = 0; i < nSTA+2+attackSTA; i++) // +2 ponieważ dodaje jednego node z wifiStaNodes 
+  //  positionAlloc->Add (Vector (radius * sin (2*M_PI * (float)i/(float)nSTA), radius * cos (2*M_PI * (float)i/(float)nSTA), 0.0));
+  positionAlloc->Add (Vector (0.0, 0.0, 0.0));
+  for (i = 0 ; i < nSTA+1; i++){
+    positionAlloc->Add (Vector (4.0, 0.0, 0.0));
+  }
+  for (i = 0 ; i < attackSTA; i++){
+    positionAlloc->Add (Vector (8.0, 0.0, 0.0));
+  }
 
   MobilityHelper mobility;
   mobility.SetPositionAllocator (positionAlloc);
@@ -219,7 +233,6 @@ wifiAttackNodes.Create (attackSTA);
 /* ===== Propagation Model configuration ===== */
   //default model (i.e. LogDistancePropagationLossModel)
   YansWifiChannelHelper channel = YansWifiChannelHelper::Default (); //default
-
 
 /* ===== MAC and PHY configuration ===== */
 
@@ -264,29 +277,26 @@ wifiAttackNodes.Create (attackSTA);
   // Stacja AP
   mac.SetType ("ns3::ApWifiMac",
               "QosSupported", BooleanValue (true),
-               "Ssid", SsidValue (ssid),   
+               "Ssid", SsidValue (ssid),
                "AltEDCASupported", BooleanValue (true));  
   NetDeviceContainer apDevice;
   apDevice = wifi.Install (phy, mac, wifiApNode);
   // Attack stations/Stacje atakujace 
-  
+  //Ptr<JitterBeacon> jitterbeacon = CreateObject<JitterBeacon> ();
   Ssid ssid2 = Ssid ("attack");
   mac.SetType ("ns3::ApWifiMac",
                "Ssid", SsidValue (ssid),
                "BeaconInterval", TimeValue (Seconds(BeaconInt2)),
-               "EnableBeaconJitter",BooleanValue (true) );  
+               "EnableBeaconJitter",BooleanValue (true));/*,
+               "BeaconJitter", PointerValue(BeaconInt2) ); */ 
                
   NetDeviceContainer AttackDevices;
   AttackDevices = wifi.Install (phy, mac, wifiAttackNodes);
 
 
-
-
 //Configs with paths:
   /* !!! IMPORTANT - HERE WE SHOULD SET CHANNEL WIDTH */
   Config::Set ("/NodeList/*/DeviceList/*/$ns3::WifiNetDevice/Phy/ChannelWidth", UintegerValue (20) ); //for 802.11n/ac - see http://mcsindex.com/
-
-
 
 //Queue Size (in packets):
   Config::Set ("/NodeList/*/DeviceList/*/Mac/VO_Txop/HiTidQueue/MaxSize",  QueueSizeValue (QueueSize ("10000p")) ); //setting A_VO queue size
@@ -312,12 +322,13 @@ wifiAttackNodes.Create (attackSTA);
   
   Ipv4InterfaceContainer StaInterface;
   StaInterface = address.Assign (staDevices);
+  /*
   Ipv4InterfaceContainer ApInterface;
-  ApInterface = address.Assign (apDevice);
+  ApInterface = address.Assign (apDevice);*/
   // Attack stations/Stacje atakujace
   Ipv4InterfaceContainer AttackInterface;
   AttackInterface = address.Assign (AttackDevices);
-
+  
 
 /* ===== Traffic Control (TC) Layer ==== */
 
@@ -325,6 +336,14 @@ wifiAttackNodes.Create (attackSTA);
   //tch.Install (staDevices);
 
 /* ===== Setting applications ===== */
+
+ /* proba ustawienia czasu startu stacji atakujacych 
+ ApplicationContainer AttackApp;
+ AttackApp.Add (packetSinkHelper.Install (wifiAttackNodes.Get(0));
+   AttackApp.Start (Seconds (1.0));
+   AttackApp.Stop (Seconds (simulationTime+1));
+   */
+
   DataRate dataRate = DataRate (1000000 * Mbps);
 
   uint32_t destinationSTANumber = nSTA; //for one common traffic destination
