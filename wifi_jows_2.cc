@@ -282,13 +282,20 @@ wifiAttackNodes.Create (attackSTA);
   NetDeviceContainer apDevice;
   apDevice = wifi.Install (phy, mac, wifiApNode);
   // Attack stations/Stacje atakujace 
-  //Ptr<JitterBeacon> jitterbeacon = CreateObject<JitterBeacon> ();
-  Ssid ssid2 = Ssid ("attack");
+ double min = 1.0;
+ double max = 4.0;
+
+  Ptr<UniformRandomVariable> x = CreateObject<UniformRandomVariable> ();
+  x->SetAttribute ("Min", DoubleValue (min));
+  x->SetAttribute ("Max", DoubleValue (max));
+
   mac.SetType ("ns3::ApWifiMac",
                "Ssid", SsidValue (ssid),
                "BeaconInterval", TimeValue (Seconds(BeaconInt2)),
-               "EnableBeaconJitter",BooleanValue (true));/*,
-               "BeaconJitter", PointerValue(BeaconInt2) ); */ 
+               "EnableBeaconJitter",BooleanValue (true),
+               "BeaconJitter", PointerValue(x) );
+
+               /*,"BeaconJitter", PointerValue(BeaconInt2) ); */ 
                
   NetDeviceContainer AttackDevices;
   AttackDevices = wifi.Install (phy, mac, wifiAttackNodes);
@@ -322,9 +329,9 @@ wifiAttackNodes.Create (attackSTA);
   
   Ipv4InterfaceContainer StaInterface;
   StaInterface = address.Assign (staDevices);
-  /*
+  
   Ipv4InterfaceContainer ApInterface;
-  ApInterface = address.Assign (apDevice);*/
+  ApInterface = address.Assign (apDevice);
   // Attack stations/Stacje atakujace
   Ipv4InterfaceContainer AttackInterface;
   AttackInterface = address.Assign (AttackDevices);
