@@ -135,9 +135,9 @@ SimulationHelper::PopulateArpCache ()
 
 int main (int argc, char *argv[])
 {
-  uint32_t nSTA = 1;
+  uint32_t nSTA = 5;
   uint32_t packetSize = 1470;
-  float simTime = 2;
+  float simTime = 20;
   Time appsStart = Seconds(0);
   float radius = 5.0;
   float calcStart = 1;
@@ -151,8 +151,8 @@ int main (int argc, char *argv[])
   bool BK = true;
   double Mbps = 54;
   uint32_t seed = 1;
-  uint32_t attackSTA = 1;
-  double BeaconInt = 4;
+  uint32_t attackSTA = 0;
+  double BeaconInt = 100; // Normalnie 100 * 1024 - Dlugi moze miec 300
   uint32_t i;
 /* ===== Command Line parameters ===== */
 
@@ -178,7 +178,7 @@ int main (int argc, char *argv[])
   
 
   // proba ustalenia beacon interval
-  double BeaconInt2 = 102.4/(1000*BeaconInt);
+  double BeaconInterval = BeaconInt*1024;
   // -------------
 
   Time simulationTime = Seconds (simTime);
@@ -197,18 +197,8 @@ wifiAttackNodes.Create (attackSTA);
 
 
 /* ======== Positioning / Mobility ======= */
-  
-
-  //ListPositionAllocator used for uniform distiburion of nodes on the circle around central node
-
-
-
-
 
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
-
-  //for (uint32_t i = 0; i < nSTA+2+attackSTA; i++) // +2 ponieważ dodaje jednego node z wifiStaNodes 
-  //  positionAlloc->Add (Vector (radius * sin (2*M_PI * (float)i/(float)nSTA), radius * cos (2*M_PI * (float)i/(float)nSTA), 0.0));
   positionAlloc->Add (Vector (0.0, 0.0, 0.0));
   for (i = 0 ; i < nSTA+1; i++){
     positionAlloc->Add (Vector (4.0, 0.0, 0.0));
@@ -216,7 +206,7 @@ wifiAttackNodes.Create (attackSTA);
   for (i = 0 ; i < attackSTA; i++){
     positionAlloc->Add (Vector (8.0, 0.0, 0.0));
   }
-
+  
   MobilityHelper mobility;
   mobility.SetPositionAllocator (positionAlloc);
   mobility.SetMobilityModel ("ns3::ConstantVelocityMobilityModel");
@@ -291,11 +281,9 @@ wifiAttackNodes.Create (attackSTA);
 
   mac.SetType ("ns3::ApWifiMac",
                "Ssid", SsidValue (ssid),
-               "BeaconInterval", TimeValue (Seconds(BeaconInt2)),
-               "EnableBeaconJitter",BooleanValue (true),
-               "BeaconJitter", PointerValue(x) );
-
-               /*,"BeaconJitter", PointerValue(BeaconInt2) ); */ 
+               "BeaconInterval", TimeValue (MicroSeconds(BeaconInterval)),
+               "EnableBeaconJitter",BooleanValue (true));/*,
+               "BeaconJitter", PointerValue(x) );*/
                
   NetDeviceContainer AttackDevices;
   AttackDevices = wifi.Install (phy, mac, wifiAttackNodes);
