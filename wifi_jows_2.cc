@@ -30,6 +30,17 @@
 #include "ns3/rng-seed-manager.h"
 #include "ns3/flow-monitor-helper.h"
 #include "ns3/ipv4-flow-classifier.h"
+#include "ns3/string.h"
+#include "ns3/log.h"
+#include <iostream>
+#include <vector>
+#include <math.h>
+#include <fstream>
+#include <string>
+#include <sstream>
+#include <ctime>
+#include <iomanip>
+#include <sys/stat.h>
 
 //for building positioning modelling
 #include <ns3/buildings-module.h>
@@ -40,8 +51,12 @@
 #include <ns3/hybrid-buildings-propagation-loss-model.h>
 
 using namespace ns3; 
+using namespace std;
 
 NS_LOG_COMPONENT_DEFINE ("wifi-qos-test");
+
+bool fileExists(const std::string& filename);
+vector<string> splitString(string s, char delim);
 
 class SimulationHelper 
 {
@@ -72,6 +87,7 @@ SimulationHelper::CreateOnOffHelper(InetSocketAddress socketAddress, DataRate da
   onOffHelper.SetAttribute ("MaxBytes",   UintegerValue (0));
   onOffHelper.SetAttribute ("StartTime",  TimeValue (start));
   onOffHelper.SetAttribute ("StopTime",   TimeValue (stop));
+
 
   return onOffHelper;
 }
@@ -154,6 +170,8 @@ int main (int argc, char *argv[])
   uint32_t attackSTA = 0;
   double BeaconInt = 100; // Normalnie 100 * 1024 - Dlugi moze miec 300
   uint32_t i;
+  string outputCsv = "aggregation.csv";
+
 /* ===== Command Line parameters ===== */
 
   CommandLine cmd;
@@ -174,6 +192,7 @@ int main (int argc, char *argv[])
   cmd.AddValue ("seed",       "Seed",                                          seed);
   cmd.AddValue ("attackSTA",  "attackSTA",                                     attackSTA);
   cmd.AddValue ("BeaconInt",  "BeaconInt",                                     BeaconInt);
+  cmd.AddValue ("outputCsv",  "Create file",                                   outputCsv);
   cmd.Parse (argc, argv);
   
 
@@ -572,5 +591,49 @@ wifiAttackNodes.Create (attackSTA);
       std::cout << "  Mean jitter:\t---"   << std::endl;
     }
 
+  // Writing to file
+	ofstream myfile;
+	if (fileExists(outputCsv))
+	{
+		myfile.open (outputCsv, ios::app);
+	}
+	else {
+		myfile.open (outputCsv, ios::app);  
+		myfile << "Seed,simTime,nSta,attackSTA,BeaconInt,Lost_packets,Throughput,Delay,Jitter" << std::endl;
+	}
+  
+
+	myfile << RngSeedManager::GetRun() << "," << simTime << "," << destinationSTANumber << "," << attackSTA << "," << BeaconInt << "," << lostPackets << "," << throughput << "," << ((double)(delaySum / (rxPackets)).GetMicroSeconds () / 1000) << "," << ((double)(jitterSum / (rxPackets - 1)).GetMicroSeconds () / 1000) << ",";
+	myfile << std::endl;
+
+	myfile.close();
+	
+	
+	/* End of simulation */
+	Simulator::Destroy ();
+
   return 0;
+}
+
+vector<string> splitString(string s, char delim)
+{
+  vector<string> res;
+  stringstream data(s);
+  string line;
+
+  while(getline(data,line,delim))
+  {
+    res.push_back(line);
+  }
+  return res;
+}
+
+bool fileExists(const std::string& filename)
+{
+    struct stat buf;
+    if (stat(filename.c_str(), &buf) != -1)
+    {
+        return true;
+    }
+    return false;
 }
