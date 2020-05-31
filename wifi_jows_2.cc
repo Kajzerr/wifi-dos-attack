@@ -135,7 +135,7 @@ SimulationHelper::PopulateArpCache ()
 
 int main (int argc, char *argv[])
 {
-  uint32_t nSTA = 5;
+  uint32_t nSTA = 3;
   uint32_t packetSize = 1470;
   float simTime = 20;
   Time appsStart = Seconds(0);
@@ -215,8 +215,9 @@ wifiAttackNodes.Create (attackSTA);
   /*Ptr<ConstantVelocityMobilityModel> mob = sta[std][grp].Get (n)->GetObject<ConstantVelocityMobilityModel> ();
   mob->SetVelocity (Vector3D (movX, movY, movZ) );*/
 
-  mobility.Install (wifiStaNodes);
+ 
   mobility.Install (wifiApNode);
+  mobility.Install (wifiStaNodes);
   // Attack stations/Stacje atakujace
   mobility.Install (wifiAttackNodes);
 
@@ -257,13 +258,7 @@ wifiAttackNodes.Create (attackSTA);
 							    "FragmentationThreshold", UintegerValue (2500));
 
   Ssid ssid = Ssid ("test"); 
-  // Stacje klienckie 
-  mac.SetType ("ns3::StaWifiMac",
-               "QosSupported", BooleanValue (true),
-               "Ssid", SsidValue (ssid),   
-               "AltEDCASupported", BooleanValue (true));  
-  NetDeviceContainer staDevices;
-  staDevices = wifi.Install (phy, mac, wifiStaNodes);
+
   // Stacja AP
   mac.SetType ("ns3::ApWifiMac",
               "QosSupported", BooleanValue (true),
@@ -271,19 +266,20 @@ wifiAttackNodes.Create (attackSTA);
                "AltEDCASupported", BooleanValue (true));  
   NetDeviceContainer apDevice;
   apDevice = wifi.Install (phy, mac, wifiApNode);
+  // Stacje klienckie 
+  mac.SetType ("ns3::StaWifiMac",
+               "QosSupported", BooleanValue (true),
+               "Ssid", SsidValue (ssid),   
+               "AltEDCASupported", BooleanValue (true));  
+  NetDeviceContainer staDevices;
+  staDevices = wifi.Install (phy, mac, wifiStaNodes);
+  
   // Attack stations/Stacje atakujace 
- double min = 1.0;
- double max = 4.0;
-
-  Ptr<UniformRandomVariable> x = CreateObject<UniformRandomVariable> ();
-  x->SetAttribute ("Min", DoubleValue (min));
-  x->SetAttribute ("Max", DoubleValue (max));
-
   mac.SetType ("ns3::ApWifiMac",
                "Ssid", SsidValue (ssid),
                "BeaconInterval", TimeValue (MicroSeconds(BeaconInterval)),
-               "EnableBeaconJitter",BooleanValue (true));/*,
-               "BeaconJitter", PointerValue(x) );*/
+               "EnableBeaconJitter",BooleanValue (true));
+               
                
   NetDeviceContainer AttackDevices;
   AttackDevices = wifi.Install (phy, mac, wifiAttackNodes);
@@ -305,6 +301,8 @@ wifiAttackNodes.Create (attackSTA);
   //wifi.AssignStreams (staDevices, streamIndex);
 
 /* ===== Internet stack ===== */
+  Ipv4AddressHelper address;
+  address.SetBase ("192.168.1.0", "255.255.255.0");
 
   InternetStackHelper stack;
   stack.Install (wifiApNode);
@@ -312,14 +310,13 @@ wifiAttackNodes.Create (attackSTA);
   // Attack stations/Stacje atakujace
   stack.Install (wifiAttackNodes);
 
-  Ipv4AddressHelper address;
-  address.SetBase ("192.168.1.0", "255.255.255.0");
+  
+  Ipv4InterfaceContainer ApInterface;
+  ApInterface = address.Assign (apDevice);
   
   Ipv4InterfaceContainer StaInterface;
   StaInterface = address.Assign (staDevices);
   
-  Ipv4InterfaceContainer ApInterface;
-  ApInterface = address.Assign (apDevice);
   // Attack stations/Stacje atakujace
   Ipv4InterfaceContainer AttackInterface;
   AttackInterface = address.Assign (AttackDevices);
