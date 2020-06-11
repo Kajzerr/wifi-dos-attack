@@ -286,14 +286,14 @@ wifiAttackNodes.Create (attackSTA);
   mac.SetType ("ns3::ApWifiMac",
               "QosSupported", BooleanValue (true),
                "Ssid", SsidValue (ssid),
-               "AltEDCASupported", BooleanValue (true));  
+               "AltEDCASupported", BooleanValue (false));  
   NetDeviceContainer apDevice;
   apDevice = wifi.Install (phy, mac, wifiApNode);
   // Stacje klienckie 
   mac.SetType ("ns3::StaWifiMac",
                "QosSupported", BooleanValue (true),
                "Ssid", SsidValue (ssid),   
-               "AltEDCASupported", BooleanValue (true));  
+               "AltEDCASupported", BooleanValue (false));  
   NetDeviceContainer staDevices;
   staDevices = wifi.Install (phy, mac, wifiStaNodes);
   
